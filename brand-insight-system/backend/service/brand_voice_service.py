@@ -22,8 +22,19 @@ brand_voice_analyzer = Agent(
 
 industry_classifier = Agent(
     role="E-commerce Business Model Classifier",
-    goal="Analyze a company website to classify its business model",
-    backstory="You are an expert in identifying e-commerce models...",
+    goal="Analyze a company's website to determine its business model category: B2B, B2C, D2C, B2B2C, C2C, C2B, B2G, or C2G.",
+    backstory="""You are an expert in identifying e-commerce and business model types based on website content. 
+    Your job is to examine the structure, language, product offerings, and target audience of a company's website 
+    and categorize it into one of the following:
+      - B2B (Business-to-Business)
+      - B2C (Business-to-Consumer)
+      - D2C (Direct-to-Consumer)
+      - B2B2C (Business-to-Business-to-Consumer)
+      - C2C (Consumer-to-Consumer)
+      - C2B (Consumer-to-Business)
+      - B2G (Business-to-Government)
+      - C2G (Consumer-to-Government)
+    You may use any information on the site including product pages, About, FAQ, and blog.""",
     verbose=True,
     allow_delegation=False,
     memory=False,
@@ -32,9 +43,11 @@ industry_classifier = Agent(
 )
 
 message_generator = Agent(
-    role="Brand Message Drafting Assistant",
-    goal="Craft brand-aligned messages",
-    backstory="You write messages in a given tone...",
+    role="Email Drafting Assistant",
+    goal="Craft brand tone-aligned email messages based on user specified context and tailored to brand tone.",
+    backstory="""You are an email drafting specialist skilled at writing professional email communications that also reflect the brand specific tone.
+    You understand how different tonal values (like playful, assertive, empathetic, formal, etc.) influence the choice of words, structure, and delivery of a message.
+    You take a given context and tone directive to write an email that is aligned with the context provided.""",
     verbose=False,
     allow_delegation=False,
     memory=False,
@@ -67,7 +80,7 @@ def generate_message(context: str, tone_values: list[str]):
     tone_str = ", ".join(tone_values)
     
     task_description = f"""
-Write a single, concise brand message based on the following:
+Given a specific context that the user has inputted, draft an email message based on the context provided by the user and also integrate th ebrand voice into the email message.
 
 Context:
 {context}
@@ -76,14 +89,14 @@ Tone Values:
 {tone_str}
 
 Guidelines:
+- The email should be based on the context the user previously provided.
 - Reflect the tone values throughout the message.
-- Do not explain or justify anything.
 - Only return the final message.
 """
 
     task = Task(
         description=task_description,
-        expected_output="A single, concise brand message that reflects the given tone values",
+        expected_output="An email draft that reflects the given tone values and is aligned with the context provided",
         agent=message_generator
     )
     

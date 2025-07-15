@@ -8,10 +8,14 @@ function App() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [analysisComplete, setAnalysisComplete] = useState(false);
 
   const handleAnalyze = async () => {
     setLoading(true);
     setError('');
+    setAnalysisComplete(false);
+    setAnalysis(null);
+    setMessage('');
     
     try {
       const res = await fetch('http://localhost:8000/analyze/', {
@@ -50,6 +54,8 @@ function App() {
         industry_type_raw: industryRaw,
         tone_values: brandVoiceData?.tone_scale || {}
       });
+      
+      setAnalysisComplete(true);
     } catch (error) {
       setError('Failed to analyze URL: ' + error.message);
     } finally {
@@ -88,58 +94,111 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h2>Brand Voice & Industry Analyzer</h2>
-      
-      {error && (
-        <div style={{ color: 'red', background: '#ffebee', padding: '1rem', marginBottom: '1rem' }}>
-          Error: {error}
+    <div className="app-container">
+      <div className="content-wrapper">
+        <div className="header">
+          <h1 className="main-title">Brand Voice & Industry Analyzer</h1>
+          
+          <div className="url-input-section">
+            <div className="input-group">
+              <input
+                type="url"
+                placeholder="Enter website URL (e.g., https://example.com)"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="url-input"
+                disabled={loading}
+              />
+              <button 
+                onClick={handleAnalyze} 
+                disabled={loading || !url.trim()}
+                className="analyze-btn"
+              >
+                {loading ? 'Analyzing...' : 'Analyze'}
+              </button>
+            </div>
+          </div>
         </div>
-      )}
-      
-      <input
-        placeholder="Enter website URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        style={{ width: '300px', marginRight: '10px' }}
-      />
-      <button onClick={handleAnalyze} disabled={loading}>
-        {loading ? 'Analyzing...' : 'Analyze'}
-      </button>
 
-      {analysis && (
-        <>
-          <h3>Analysis Result</h3>
+        {error && (
+          <div className="error-message">
+            <span className="error-icon">⚠️</span>
+            {error}
+          </div>
+        )}
 
-          <h4>Brand Voice Output</h4>
-          <pre style={{ background: '#f4f4f4', padding: '1rem' }}>
-            {analysis.brand_voice_raw}
-          </pre>
+        {loading && !analysisComplete && (
+          <div className="loading-container">
+            <div className="spinner"></div>
+            <p className="loading-text">Analyzing brand voice and industry type...</p>
+          </div>
+        )}
 
-          <h4>Industry Type Output</h4>
-          <pre style={{ background: '#f4f4f4', padding: '1rem' }}>
-            {analysis.industry_type_raw}
-          </pre>
+        {analysis && (
+          <div className="results-container">
+            <div className="cards-grid">
+              <div className="result-card">
+                <div className="card-header">
+                  <h3 className="card-title">Brand Voice Analysis</h3>
+                  <div className="card-icon">🎯</div>
+                </div>
+                <div className="card-content">
+                  <pre className="output-text">{analysis.brand_voice_raw}</pre>
+                </div>
+              </div>
 
-          <h3>Generate Message</h3>
-          <input
-            placeholder="Enter context"
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            style={{ width: '300px', marginRight: '10px' }}
-          />
-          <button onClick={handleMessageGenerate} disabled={loading}>
-            {loading ? 'Generating...' : 'Generate'}
-          </button>
-        </>
-      )}
+              <div className="result-card">
+                <div className="card-header">
+                  <h3 className="card-title">Industry Classification</h3>
+                  <div className="card-icon">🏢</div>
+                </div>
+                <div className="card-content">
+                  <pre className="output-text">{analysis.industry_type_raw}</pre>
+                </div>
+              </div>
+            </div>
 
-      {message && (
-        <>
-          <h3>Generated Message</h3>
-          <p style={{ background: '#eef', padding: '1rem' }}>{message}</p>
-        </>
-      )}
+            <div className="message-generator-section">
+              <div className="section-header">
+                <h3 className="section-title">Generate Brand Message</h3>
+                <p className="section-subtitle">Create a message aligned with your brand voice</p>
+              </div>
+              
+              <div className="message-input-group">
+                <textarea
+                  placeholder="Enter context for your message (e.g., product launch, customer support, marketing campaign)"
+                  value={context}
+                  onChange={(e) => setContext(e.target.value)}
+                  className="context-input"
+                  rows="3"
+                  disabled={loading}
+                />
+                <button 
+                  onClick={handleMessageGenerate} 
+                  disabled={loading || !context.trim()}
+                  className="generate-btn"
+                >
+                  {loading ? 'Generating...' : 'Generate Message'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {message && (
+          <div className="message-result">
+            <div className="message-card">
+              <div className="card-header">
+                <h3 className="card-title">Generated Message</h3>
+                <div className="card-icon">💬</div>
+              </div>
+              <div className="card-content">
+                <p className="generated-message">{message}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
