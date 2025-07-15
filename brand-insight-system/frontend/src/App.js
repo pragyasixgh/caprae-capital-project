@@ -10,6 +10,81 @@ function App() {
   const [error, setError] = useState('');
   const [analysisComplete, setAnalysisComplete] = useState(false);
 
+  // Helper function to parse YAML-like content
+  const parseYAMLContent = (content) => {
+    const result = {
+      tone_scale: [],
+      personality_traits: [],
+      messaging_themes: [],
+      communication_guidelines: []
+    };
+
+    const lines = content.split('\n');
+    let currentSection = null;
+    let currentItem = '';
+
+    for (let line of lines) {
+      line = line.trim();
+      
+      if (line.includes('tone_scale:')) {
+        currentSection = 'tone_scale';
+        continue;
+      } else if (line.includes('personality_traits:')) {
+        currentSection = 'personality_traits';
+        continue;
+      } else if (line.includes('messaging_themes:')) {
+        currentSection = 'messaging_themes';
+        continue;
+      } else if (line.includes('communication_guidelines:')) {
+        currentSection = 'communication_guidelines';
+        continue;
+      }
+
+      if (currentSection && line.startsWith('-')) {
+        const item = line.substring(1).trim();
+        if (currentSection === 'messaging_themes' || currentSection === 'communication_guidelines') {
+          // For multi-line items, start collecting
+          currentItem = item;
+          if (!item.endsWith(':')) {
+            result[currentSection].push(item);
+            currentItem = '';
+          }
+        } else {
+          result[currentSection].push(item);
+        }
+      } else if (currentItem && line && !line.includes(':')) {
+        // Continue multi-line item
+        currentItem += ' ' + line;
+        if (!line.endsWith(',')) {
+          result[currentSection].push(currentItem);
+          currentItem = '';
+        }
+      }
+    }
+
+    return result;
+  };
+
+  // Helper function to parse JSON content
+  const parseJSONContent = (content) => {
+    try {
+      const parsed = JSON.parse(content);
+      return {
+        industry_type: parsed.industry_type || 'Unknown',
+        justification: parsed.justification || 'No justification provided'
+      };
+    } catch (e) {
+      // Fallback parsing for non-JSON format
+      const industryMatch = content.match(/"industry_type":\s*"([^"]+)"/);
+      const justificationMatch = content.match(/"justification":\s*"([^"]+)"/);
+      
+      return {
+        industry_type: industryMatch ? industryMatch[1] : 'Unknown',
+        justification: justificationMatch ? justificationMatch[1] : 'No justification provided'
+      };
+    }
+  };
+
   const handleAnalyze = async () => {
     setLoading(true);
     setError('');
@@ -31,28 +106,20 @@ function App() {
         return;
       }
       
-      // Extract and format the raw output
+      // Extract and parse the raw output
       const brandVoiceRaw = data.tasks_output[0].raw;
       const industryRaw = data.tasks_output[1].raw;
       
-      // Try to parse the raw output as YAML/JSON if possible
-      let brandVoiceData = {};
-      let industryData = {};
-      try {
-        // Try to parse the raw output as YAML/JSON
-        brandVoiceData = JSON.parse(brandVoiceRaw);
-        industryData = JSON.parse(industryRaw);
-      } catch (e) {
-        // If parsing fails, just use the raw text
-        console.log('Could not parse output as JSON:', e);
-      }
+      // Parse the content
+      const brandVoiceData = parseYAMLContent(brandVoiceRaw);
+      const industryData = parseJSONContent(industryRaw);
 
       setAnalysis({
         brand_voice: brandVoiceData,
-        industry_type: industryData,
+        industry_data: industryData,
         brand_voice_raw: brandVoiceRaw,
         industry_type_raw: industryRaw,
-        tone_values: brandVoiceData?.tone_scale || {}
+        tone_values: brandVoiceData.tone_scale || []
       });
       
       setAnalysisComplete(true);
@@ -73,7 +140,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           context,
-          tone_values: Object.values(analysis?.tone_values || {})
+          tone_values: analysis?.tone_values || []
         })
       });
       
@@ -84,7 +151,6 @@ function App() {
         return;
       }
       
-      // Access the message from the response
       setMessage(data.message || data);
     } catch (error) {
       setError('Failed to generate message: ' + error.message);
@@ -143,7 +209,67 @@ function App() {
                   <div className="card-icon">🎯</div>
                 </div>
                 <div className="card-content">
-                  <pre className="output-text">{analysis.brand_voice_raw}</pre>
+                  <div className="brand-voice-grid">
+                    <div className="voice-section">
+                      <h4 className="section-title">Tone Scale</h4>
+                      <div className="content-section">
+                        {analysis.brand_voice.tone_scale.length > 0 ? (
+                          <ul className="content-list">
+                            {analysis.brand_voice.tone_scale.map((item, index) => (
+                              <li key={index} className="list-item">{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="content-text">No tone scale data available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="voice-section">
+                      <h4 className="section-title">Personality Traits</h4>
+                      <div className="content-section">
+                        {analysis.brand_voice.personality_traits.length > 0 ? (
+                          <ul className="content-list">
+                            {analysis.brand_voice.personality_traits.map((item, index) => (
+                              <li key={index} className="list-item">{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="content-text">No personality traits data available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="voice-section">
+                      <h4 className="section-title">Messaging Themes</h4>
+                      <div className="content-section">
+                        {analysis.brand_voice.messaging_themes.length > 0 ? (
+                          <ul className="content-list">
+                            {analysis.brand_voice.messaging_themes.map((item, index) => (
+                              <li key={index} className="list-item">{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="content-text">No messaging themes data available</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="voice-section">
+                      <h4 className="section-title">Communication Guidelines</h4>
+                      <div className="content-section">
+                        {analysis.brand_voice.communication_guidelines.length > 0 ? (
+                          <ul className="content-list">
+                            {analysis.brand_voice.communication_guidelines.map((item, index) => (
+                              <li key={index} className="list-item">{item}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="content-text">No communication guidelines data available</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -153,7 +279,21 @@ function App() {
                   <div className="card-icon">🏢</div>
                 </div>
                 <div className="card-content">
-                  <pre className="output-text">{analysis.industry_type_raw}</pre>
+                  <div className="industry-content">
+                    <div className="industry-type-section">
+                      <h4 className="section-title">Industry Type</h4>
+                      <div className="industry-badge">
+                        {analysis.industry_data.industry_type}
+                      </div>
+                    </div>
+                    
+                    <div className="justification-section">
+                      <h4 className="section-title">Justification</h4>
+                      <p className="content-text">
+                        {analysis.industry_data.justification}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
