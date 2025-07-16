@@ -76,27 +76,29 @@ async def run_crew_analysis(url: str):
     result = crew.kickoff()  # Return the entire crew result
     return result
 
-def generate_message(context: str, tone_values: list[str]):
-    tone_str = ", ".join(tone_values)
-    
+def generate_message(context: str, result):
     task_description = f"""
-Given a specific context that the user has inputted, draft an email message based on the context provided by the user and also integrate th ebrand voice into the email message.
+You must draft a professional email message based on the specific context provided by the user.
 
-Context:
+CONTEXT TO ADDRESS:
 {context}
 
-Tone Values:
-{tone_str}
+BRAND ANALYSIS TO FOLLOW:
+{result}
 
-Guidelines:
-- The email should be based on the context the user previously provided.
-- Reflect the tone values throughout the message.
-- Only return the final message.
+INSTRUCTIONS:
+1. Write an email that directly addresses the context: "{context}"
+2. Use the brand voice, tone, and communication guidelines from the brand analysis above
+3. Make the email professional and actionable
+4. Return ONLY the email content, no explanations or meta-commentary
+5. Do not return generic responses - address the specific context provided
+
+Draft the email now:
 """
 
     task = Task(
         description=task_description,
-        expected_output="An email draft that reflects the given tone values and is aligned with the context provided",
+        expected_output="An email draft that reflects the analyzed brand tone and is aligned with the context provided",
         agent=message_generator
     )
     

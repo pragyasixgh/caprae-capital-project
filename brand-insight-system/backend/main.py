@@ -11,6 +11,9 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 app = FastAPI()
 
+# Store the analysis result in memory (for production, use a database)
+stored_analysis_result = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # React frontend
@@ -24,12 +27,17 @@ class URLRequest(BaseModel):
 
 class ContextInput(BaseModel):
     context: str
-    tone_values: list[str]
+    tone_values: list[str]  # This can be removed if not needed
 
 @app.post("/analyze/")
 async def analyze_url(req: URLRequest):
+    global stored_analysis_result
     try:
         result = await run_crew_analysis(req.url)
+        
+        # Store the full result for later use
+        stored_analysis_result = result
+        
         # Return the raw output for each task
         return {
             "tasks_output": [
@@ -42,9 +50,14 @@ async def analyze_url(req: URLRequest):
 
 @app.post("/generate-message/")
 async def generate_brand_message(req: ContextInput):
+    global stored_analysis_result
     try:
-        # Remove await since generate_message is not async
-        message = generate_message(req.context, req.tone_values)
+        # Check if we have a stored analysis result
+        if stored_analysis_result is None:
+            return {"error": "No brand analysis found. Please run /analyze/ first."}
+        
+        # Pass the stored analysis result instead of tone_values
+        message = generate_message(req.context, stored_analysis_result)
         return {"message": message}
     except Exception as e:
         return {"error": str(e)}
